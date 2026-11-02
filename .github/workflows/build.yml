@@ -1,1 +1,99 @@
+name: Build APK
 
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Arrange project and generate icon
+        run: |
+          set -e
+          mkdir -p src/main/java/com/relationshipcues/fbpost
+          mkdir -p src/main/assets
+          mkdir -p src/main/res/mipmap-anydpi-v26
+          mkdir -p src/main/res/drawable
+          mv AndroidManifest.xml src/main/AndroidManifest.xml
+          mv MainActivity.java src/main/java/com/relationshipcues/fbpost/MainActivity.java
+          mv index.html src/main/assets/index.html
+
+          cat > src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_bg"/>
+              <foreground android:drawable="@drawable/ic_fg"/>
+          </adaptive-icon>
+          EOF
+          cp src/main/res/mipmap-anydpi-v26/ic_launcher.xml src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml
+
+          cat > src/main/res/drawable/ic_bg.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:aapt="http://schemas.android.com/aapt"
+              android:width="108dp" android:height="108dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:pathData="M0,0h108v108h-108z">
+                  <aapt:attr name="android:fillColor">
+                      <gradient android:startX="0" android:startY="0"
+                          android:endX="108" android:endY="108" android:type="linear">
+                          <item android:offset="0" android:color="#FF3B1B9E"/>
+                          <item android:offset="1" android:color="#FFEE4B7F"/>
+                      </gradient>
+                  </aapt:attr>
+              </path>
+          </vector>
+          EOF
+
+          cat > src/main/res/drawable/ic_fg.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#FFFFFFFF"
+                  android:pathData="M38,32 L70,32 A8,8 0 0 1 78,40 L78,62 A8,8 0 0 1 70,70 L52,70 L40,80 L40,70 L38,70 A8,8 0 0 1 30,62 L30,40 A8,8 0 0 1 38,32 Z"/>
+              <group android:scaleX="1.1" android:scaleY="1.1"
+                  android:translateX="40.8" android:translateY="37.6">
+                  <path android:fillColor="#FFEE4B7F"
+                      android:pathData="M12,21.35l-1.45,-1.32C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3c1.74,0 3.41,0.81 4.5,2.09C13.09,3.81 14.76,3 16.5,3 19.58,3 22,5.42 22,8.5c0,3.78 -3.4,6.86 -8.55,11.54L12,21.35z"/>
+              </group>
+          </vector>
+          EOF
+
+      - name: Build debug APK
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Collect APK
+        run: |
+          mkdir -p out
+          cp build/outputs/apk/debug/*-debug.apk out/FB-Post-Generator.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FB-Post-Generator-APK
+          path: out/FB-Post-Generator.apk
+
+      - name: Publish release (direct APK download link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ github.run_number }}" out/FB-Post-Generator.apk \
+            --repo "${{ github.repository }}" \
+            --title "FB Post Generator v${{ github.run_number }}" \
+            --notes "Debug APK build. Download FB-Post-Generator.apk and install it."
