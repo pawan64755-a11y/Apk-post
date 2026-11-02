@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>FB Post Generator</title>
+<style>
+:root{--bg:#0f1117;--card:#181b24;--line:#2a2f3d;--txt:#e8eaf0;--mut:#8b92a5;--acc:#6c8cff;--ok:#3ecf8e}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px 16px 40px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+label{font-size:13px;color:var(--mut);display:block;margin-bottom:6px}
+textarea,input,select{width:100%;background:#0f1117;color:var(--txt);border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:16px}
+textarea{min-height:110px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+button{background:var(--acc);color:#fff;border:0;border-radius:10px;padding:12px 14px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+button.alt{background:#262b3a;color:var(--txt);border:1px solid var(--line)}
+button.ok{background:var(--ok);color:#06231a}
+button:disabled{opacity:.5}
+.h{font-size:12px;color:var(--mut);margin-top:8px}
+details summary{cursor:pointer;font-weight:600;font-size:14px}
+.out h3{margin:0 0 6px;font-size:12px;letter-spacing:.08em;color:var(--mut)}
+.out pre{white-space:pre-wrap;word-wrap:break-word;margin:0 0 8px;background:#0f1117;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:15px}
+.blk{margin-bottom:14px}
+.status{font-size:13px;color:var(--mut);margin-top:8px;min-height:18px}
+.wc{font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>FB Post Generator</h1>
+
+<div class="card">
+  <label for="inp">Title या Text यहाँ paste करो</label>
+  <textarea id="inp" placeholder="जैसे: Why do we get attached to people who treat us badly"></textarea>
+  <div class="h">पहले 3 बटन prompt कॉपी करके AI ऐप/साइट खोलते हैं। "Direct Output" बटन API key से इसी ऐप में जवाब लाता है।</div>
+  <div class="row">
+    <button id="bChat">ChatGPT में खोलो</button>
+    <button id="bGem" class="alt">Gemini में खोलो</button>
+    <button id="bDeep" class="alt">DeepSeek में खोलो</button>
+    <button id="bCopy" class="alt">सिर्फ Prompt कॉपी</button>
+  </div>
+  <div class="status" id="st"></div>
+</div>
+
+<div class="card">
+  <details>
+    <summary>Direct Output (API key से, इसी ऐप में)</summary>
+    <div style="margin-top:10px">
+      <label for="prov">AI चुनो</label>
+      <select id="prov">
+        <option value="gemini">Google Gemini (free tier मिलता है)</option>
+        <option value="deepseek">DeepSeek</option>
+      </select>
+      <label for="model" style="margin-top:10px">Model नाम (बदलना हो तो)</label>
+      <input id="model" value="gemini-2.5-flash">
+      <label for="key" style="margin-top:10px">API Key (सिर्फ आपके फोन में सेव होती है)</label>
+      <input id="key" type="password" placeholder="अपनी API key paste करो" autocomplete="off">
+      <div class="row">
+        <button id="bGen" class="ok">Generate करो</button>
+        <button id="bClear" class="alt">Key हटाओ</button>
+      </div>
+      <div class="h">Gemini key: aistudio.google.com/apikey । DeepSeek key: platform.deepseek.com ।</div>
+    </div>
+  </details>
+</div>
+
+<div id="res"></div>
+</div>
+
+<script>
+const TEMPLATE = `You are a social media writer for a Facebook page on relationship psychology and dating tips. Your posts must make people think "this is exactly me" or "this is exactly them", so they like, share and tag someone on their own.
+
+I will give you a title or a piece of text. Turn it into 4 things: POST TITLE, FACT, SHARE LINE, IMAGE PROMPT.
+
+POST TITLE rules:
+- One line, max 10 words, in English.
+- It must make clear what the post is about by naming the situation or feeling. Style example: "Why You Overthink When They Reply Late".
+- Specific and relatable, not vague. It must match the fact, with no clickbait the fact doesn't deliver on.
+- No hashtags, no emojis, no quotation marks.
+
+FACT rules:
+- The fact must be 100% complete on its own. The reader should feel "I got the full answer", never "something is missing". No teasers, no cliffhangers, no hanging questions, no "here's why" without giving the why.
+- It must always contain 3 parts: (1) what is happening, a situation the reader has lived, (2) why it happens, the psychology in plain words, (3) what to do about it, one specific action and the result it leads to. You may merge parts to fit 2 lines, but never skip a part.
+- The action must be concrete and doable today (what exactly to say, do or stop doing). No vague advice like "communicate more", "love yourself" or "be patient".
+- Make the last line a clear takeaway the reader would want to repeat to a friend.
+- LENGTH: 2-3 lines, max 40 words in total, max 15 words per line. Keep every word useful: cut filler, never cut a part.
+- Simple conversational English, like a close friend talking. No textbook tone, no cliches.
+- Use gender-neutral language unless the input is gender-specific. Never blame any gender.
+- Healthy advice only. No manipulation or mind games.
+- Do NOT invent statistics, studies, percentages or expert names.
+- No hashtags, no emojis.
+- Before answering, check: are the situation, the reason and the action all there? Is it 40 words or less? If not, rewrite.
+- Style example only, never reuse it:
+  Late replies make you overthink because your mind fills silence with the worst story.
+  Pause and ask: what do I actually know?
+  Then send one calm, direct message instead of five guesses.
+
+SHARE LINE rules:
+- One short, warm line (max 12 words) that makes the reader think of a specific person.
+- Imply, don't command. Examples: "This one's for the friend who always overthinks." / "Somebody you know needs to read this today."
+- Never ask directly for likes, comments, shares or tags.
+- Vary it every time. Max 1 emoji.
+
+IMAGE PROMPT rules:
+- 1-2 lines, English, ready to paste into any AI image tool.
+- Show the feeling of the fact, not a literal illustration. One clear subject, expressive face or body language, cinematic soft moody lighting, warm deep tones.
+- Uncluttered background with some clean empty space at the top or bottom.
+- No text, letters or logos inside the image.
+- End with: "4:5 vertical, high detail, realistic".
+
+OUTPUT FORMAT:
+Give exactly 4 separate markdown code blocks, in this order: first the POST TITLE, then the FACT, then the SHARE LINE, then the IMAGE PROMPT. Put only the text itself inside each code block. Write just one label above each block (POST TITLE, FACT, SHARE LINE, IMAGE PROMPT). No intro, no explanation, nothing else.
+
+My title/text: [PASTE HERE]`;
+
+const $ = id => document.getElementById(id);
+const st = m => $('st').textContent = m;
+
+function buildPrompt(){
+  const v = $('inp').value.trim();
+  if(!v){ st('पहले title या text paste करो।'); return null; }
+  return TEMPLATE.replace('[PASTE HERE]', () => v);
+}
+
+// Android app bridge (falls back to normal browser behaviour)
+async function copy(t){
+  try{ if(window.Android && Android.copy){ Android.copy(t); return true; } }catch(e){}
+  try{ await navigator.clipboard.writeText(t); return true; }
+  catch(e){
+    const a=document.createElement('textarea'); a.value=t; document.body.appendChild(a); a.select();
+    let ok=false; try{ ok=document.execCommand('copy'); }catch(_){}
+    a.remove(); return ok;
+  }
+}
+function openUrl(u){
+  try{ if(window.Android && Android.openUrl){ Android.openUrl(u); return; } }catch(e){}
+  window.open(u,'_blank');
+}
+
+$('bCopy').onclick = async()=>{ const p=buildPrompt(); if(!p) return; st(await copy(p)?'Prompt कॉपी हो गया।':'कॉपी नहीं हुआ, दोबारा try करो।'); };
+$('bChat').onclick = async()=>{
+  const p=buildPrompt(); if(!p) return;
+  await copy(p);
+  openUrl('https://chatgpt.com/?q='+encodeURIComponent(p));
+  st('ChatGPT खुल रहा है। Prompt कॉपी हो चुका है, box खाली दिखे तो paste कर दो।');
+};
+$('bGem').onclick = async()=>{
+  const p=buildPrompt(); if(!p) return;
+  await copy(p); openUrl('https://gemini.google.com/app');
+  st('Prompt कॉपी हो गया। Gemini में paste करके Send दबाओ।');
+};
+$('bDeep').onclick = async()=>{
+  const p=buildPrompt(); if(!p) return;
+  await copy(p); openUrl('https://chat.deepseek.com/');
+  st('Prompt कॉपी हो गया। DeepSeek में paste करके Send दबाओ।');
+};
+
+// saved settings
+try{
+  $('key').value = localStorage.getItem('fbgen_key')||'';
+  const pv = localStorage.getItem('fbgen_prov'); if(pv) $('prov').value=pv;
+  const md = localStorage.getItem('fbgen_model'); if(md) $('model').value=md;
+}catch(e){}
+$('prov').onchange = ()=>{ $('model').value = $('prov').value==='gemini' ? 'gemini-2.5-flash' : 'deepseek-chat'; };
+$('bClear').onclick = ()=>{ try{ localStorage.removeItem('fbgen_key'); }catch(e){} $('key').value=''; st('Key हटा दी गई।'); };
+
+function parseBlocks(t){
+  const m=[...t.matchAll(/```[a-z]*\n?([\s\S]*?)```/gi)].map(x=>x[1].trim());
+  return m.length>=4 ? m.slice(0,4) : null;
+}
+function wc(s){ return s.trim().split(/\s+/).filter(Boolean).length; }
+
+function render(text){
+  const labels=['POST TITLE','FACT','SHARE LINE','IMAGE PROMPT'];
+  const b=parseBlocks(text);
+  const res=$('res'); res.innerHTML='';
+  const card=document.createElement('div'); card.className='card out';
+  if(!b){
+    const pre=document.createElement('pre'); pre.textContent=text; card.appendChild(pre);
+  } else {
+    b.forEach((val,i)=>{
+      const d=document.createElement('div'); d.className='blk';
+      const h=document.createElement('h3'); h.textContent=labels[i];
+      const pre=document.createElement('pre'); pre.textContent=val;
+      const row=document.createElement('div'); row.className='row'; row.style.marginTop='0';
+      const btn=document.createElement('button'); btn.className='alt'; btn.textContent='Copy';
+      btn.onclick=async()=>{ await copy(val); btn.textContent='Copied'; setTimeout(()=>btn.textContent='Copy',1200); };
+      row.appendChild(btn);
+      if(i===1){ const w=document.createElement('span'); w.className='wc'; w.style.alignSelf='center'; w.textContent=wc(val)+' words'; row.appendChild(w); }
+      d.append(h,pre,row); card.appendChild(d);
+    });
+  }
+  res.appendChild(card);
+}
+
+$('bGen').onclick = async()=>{
+  const p=buildPrompt(); if(!p) return;
+  const key=$('key').value.trim(); if(!key){ st('API key डालो।'); return; }
+  const prov=$('prov').value, model=$('model').value.trim();
+  try{ localStorage.setItem('fbgen_key',key); localStorage.setItem('fbgen_prov',prov); localStorage.setItem('fbgen_model',model); }catch(e){}
+  $('bGen').disabled=true; st('Generate हो रहा है...');
+  try{
+    let text='';
+    if(prov==='gemini'){
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-goog-api-key':key},
+        body:JSON.stringify({contents:[{parts:[{text:p}]}]})
+      });
+      const j=await r.json();
+      if(!r.ok) throw new Error(j.error?.message||('HTTP '+r.status));
+      text=(j.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('');
+    } else {
+      const r=await fetch('https://api.deepseek.com/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({model,messages:[{role:'user',content:p}],stream:false})
+      });
+      const j=await r.json();
+      if(!r.ok) throw new Error(j.error?.message||('HTTP '+r.status));
+      text=j.choices?.[0]?.message?.content||'';
+    }
+    if(!text) throw new Error('खाली जवाब मिला');
+    render(text); st('हो गया।');
+  }catch(e){
+    st('Error: '+e.message+' (key, model नाम या नेटवर्क जाँचो)');
+  }finally{ $('bGen').disabled=false; }
+};
+</script>
+</body>
+</html>

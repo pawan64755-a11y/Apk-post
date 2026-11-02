@@ -1,0 +1,40 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.5.2'
+    }
+}
+
+apply plugin: 'com.android.application'
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+android {
+    namespace 'com.relationshipcues.fbpost'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.relationshipcues.fbpost'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
